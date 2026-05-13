@@ -890,37 +890,48 @@ function renderStudy() {
 }
 
 async function loadImg() {
+  // 1. 获取当前单词
   const w = currentWords[currentIdx];
   if (imgCache[w.en]) return;
+
+  // 2. 显示加载状态
   const ph = document.getElementById('img-placeholder');
   const ld = document.getElementById('img-loading');
   const imgEl = document.getElementById('study-img');
   const zone = document.getElementById('img-zone');
+
   ph.style.display = 'none';
   ld.style.display = 'flex';
   zone.onclick = null;
 
   try {
-    const res = await fetch("https://api.anthropic.com/v1/messages", {
-      method:"POST",
-      headers:{"Content-Type":"application/json"},
-      body: JSON.stringify({
-        model:"claude-sonnet-4-20250514",
-        max_tokens:100,
-        messages:[{ role:"user", content:`Give me a 4-6 word Unsplash search query to illustrate the English word "${w.en}" meaning "${w.cn}". Reply with ONLY the query, no punctuation.` }]
-      })
-    });
-    const data = await res.json();
-    const q = data.content[0].text.trim();
-    const url = `https://source.unsplash.com/400x280/?${encodeURIComponent(q)}`;
-    imgCache[w.en] = url;
-    imgEl.src = url;
-    imgEl.onload = () => { ld.style.display = 'none'; imgEl.style.display = 'block'; };
-    imgEl.onerror = () => { ld.style.display = 'none'; ph.style.display = 'flex'; ph.querySelector('span').textContent = '图片加载失败'; zone.onclick = loadImg; };
-  } catch(e) {
+    // 3. 改用免费图标API加载对应图片
+    const imgUrl = `https://img.icons8.com/fluency/200/${w.en}.png`;
+    
+    // 预加载图片
+    const testImg = new Image();
+    testImg.onload = () => {
+      imgEl.src = imgUrl;
+      imgEl.alt = w.en;
+      imgEl.style.display = 'block';
+      imgCache[w.en] = true;
+      ld.style.display = 'none';
+    };
+    testImg.onerror = () => {
+      // 找不到对应图片时，显示默认问号图
+      imgEl.src = "https://img.icons8.com/fluency/200/question-mark.png";
+      imgEl.alt = "no image";
+      imgEl.style.display = 'block';
+      imgCache[w.en] = true;
+      ld.style.display = 'none';
+    };
+    testImg.src = imgUrl;
+
+  } catch (err) {
+    console.error('图片加载失败', err);
+    // 出错时恢复状态
     ld.style.display = 'none';
     ph.style.display = 'flex';
-    ph.querySelector('span').textContent = '点击重试';
     zone.onclick = loadImg;
   }
 }
